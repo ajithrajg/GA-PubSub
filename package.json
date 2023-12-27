@@ -1,0 +1,39 @@
+{
+  "name": "ga-pubsub",
+  "version": "1.0.1",
+  "description": "It establishes data communication between different components or systems using event-driven architecture",
+  "main": "./EventManager/event.js",
+  "scripts": {
+    "test": "npx test"
+  },
+  "jest": {
+    "testMatch": [
+      "**/?(*.)+(spec|test).js"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ajithrajg/GA_PubSub.git"
+  },
+  "keywords": [
+    "publish",
+    "subscribe",
+    "pubsub",
+    "event",
+    "event-driven",
+    "event-driven",
+    "architecture",
+    "eventing",
+    "eventing",
+    "manager"
+  ],
+  "author": "Ajithraj G",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ajithrajg/GA_PubSub/issues"
+  },
+  "homepage": "https://github.com/ajithrajg/GA_PubSub#readme",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
