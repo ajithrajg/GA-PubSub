@@ -1,5 +1,5 @@
 // event.test.js
-const EventManager = require('./EventManager/event');
+const EventManager = require('./EventManager/event.min');
 
 describe('EventManager', () => {
   let eventManager;
@@ -11,7 +11,7 @@ describe('EventManager', () => {
   test('should subscribe to and publish an event', () => {
     // Arrange
     const callback = jest.fn();
-    const eventData = { 'test_event': 'test_value' };
+    const eventData = { 'key': 'value' };
 
     // Act
     eventManager.subscribe('exampleEvent', callback);
@@ -25,7 +25,7 @@ describe('EventManager', () => {
     // Arrange
     const callback1 = jest.fn();
     const callback2 = jest.fn();
-    const eventData = { 'test_event': 'test_value' };
+    const eventData = { 'key': 'value' };
 
     // Act
     eventManager.subscribe('exampleEvent', callback1);
@@ -48,4 +48,100 @@ describe('EventManager', () => {
     // Assert
     expect(callback).not.toHaveBeenCalled();
   });
+
+  test('should handle synchronous event subscribers', () => {
+    const eventName = 'syncEvent';
+    const mockSubscriber = jest.fn();
+
+    eventManager.subscribe(eventName, mockSubscriber);
+    eventManager.publish(eventName, 'data');
+
+    expect(mockSubscriber).toHaveBeenCalledWith('data');
+  });
+
+  test('should handle asynchronous event subscribers', async () => {
+    const eventName = 'asyncEvent';
+    const asyncSubscriber = async (data) => {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(`Processed ${data}`);
+        }, 100);
+      });
+    };
+
+    const mockSubscriber = jest.fn();
+
+    eventManager.subscribe(eventName, asyncSubscriber);
+    await eventManager.publish(eventName, 'data');
+
+    expect(mockSubscriber).not.toHaveBeenCalled(); // Asynchronous subscriber should not be called synchronously
+  });
+
+  test('should handle asynchronous function as argument and handle in subscription', async () => {
+    const eventName = 'asyncEvent';
+    const asyncSubscriber = async (data) => {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(`Processed ${data}`);
+        }, 100);
+      });
+    };
+
+    const mockSubscriber = jest.fn();
+
+    eventManager.subscribe(eventName, asyncSubscriber);
+    await eventManager.publish(eventName, 'data');
+
+    // Ensure that the asyncSubscriber is called with the correct data
+    expect(mockSubscriber).not.toHaveBeenCalled();
+  });
+
+  test('should handle simple data as argument and handle in subscription', () => {
+    const eventName = 'simpleDataEvent';
+    const mockSubscriber = jest.fn();
+
+    eventManager.subscribe(eventName, mockSubscriber);
+    eventManager.publish(eventName, 'data');
+
+    // Ensure that the mockSubscriber is called with the correct data
+    expect(mockSubscriber).toHaveBeenCalledWith('data');
+  });
+
+  test('should handle error in asynchronous function', async () => {
+    const eventName = 'errorEvent';
+    const asyncSubscriberWithError = async () => {
+      throw new Error('Async error');
+    };
+  
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  
+    eventManager.subscribe(eventName, asyncSubscriberWithError);
+  
+    // Ensure that the error is caught and logged
+    try {
+      await eventManager.publish(eventName, 'data');
+      // If we reach this point, the async function did not throw an error
+      expect(true).toBe(true);
+    } catch (error) {
+      expect(error.message).toBe('Async error');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Async error'));
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
+  });
+  
+  
+  
+
+  test('should unsubscribe a subscriber', () => {
+    const eventName = 'unsubscribeEvent';
+    const mockSubscriber = jest.fn();
+
+    eventManager.subscribe(eventName, mockSubscriber);
+    eventManager.unsubscribe(eventName, mockSubscriber);
+    eventManager.publish(eventName, 'data');
+
+    expect(mockSubscriber).not.toHaveBeenCalled();
+  });
+
 });

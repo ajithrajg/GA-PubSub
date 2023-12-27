@@ -4,20 +4,31 @@ class EventingManagerService {
     }
   
     subscribe(eventName, someFunction) {
-      if (!this.eventRegistry[eventName]) {
-        this.eventRegistry[eventName] = [someFunction];
-      } else {
-        this.eventRegistry[eventName].push(someFunction);
-      }
+        if (!this.eventRegistry[eventName]) {
+          this.eventRegistry[eventName] = [{ func: someFunction, isAsync: someFunction.constructor.name === 'AsyncFunction' }];
+        } else {
+          this.eventRegistry[eventName].push({ func: someFunction, isAsync: someFunction.constructor.name === 'AsyncFunction' });
+        }
     }
-  
-    publish(eventName, data) {
-      if (this.eventRegistry[eventName]) {
-        this.eventRegistry[eventName].forEach((listener) => {
-          listener(data);
-        });
+
+    async publish(eventName, data) {
+        if (this.eventRegistry[eventName]) {
+          for (const listener of this.eventRegistry[eventName]) {
+            if (listener.isAsync) {
+              // Handling asynchronous functions using await
+              try {
+                await listener.func(data);
+              } catch (error) {
+                console.error(`Error handling event ${eventName}: ${error}`);
+              }
+            } else {
+              // Handling synchronous functions
+              listener.func(data);
+            }
+          }
+        }
       }
-    }
+    
   
     unsubscribeAll() {
       this.eventRegistry = {};

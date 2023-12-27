@@ -2,7 +2,7 @@
   "name": "ga-pubsub",
   "version": "1.0.1",
   "description": "It establishes data communication between different components or systems using event-driven architecture",
-  "main": "./EventManager/event.js",
+  "main": "./EventManager/event.min.js",
   "scripts": {
     "test": "npx test"
   },
