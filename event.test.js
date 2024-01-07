@@ -130,18 +130,32 @@ describe('EventManager', () => {
     }
   });
   
-  
-  
-
-  test('should unsubscribe a subscriber', () => {
+  test('should unsubscribe a subscriber', async () => {
     const eventName = 'unsubscribeEvent';
     const mockSubscriber = jest.fn();
-
-    eventManager.subscribe(eventName, mockSubscriber);
-    eventManager.unsubscribe(eventName, mockSubscriber);
-    eventManager.publish(eventName, 'data');
-
+  
+    const subscriberId = eventManager.subscribe(eventName, mockSubscriber);
+    await eventManager.unsubscribe(eventName, subscriberId); // Await the unsubscribe operation
+    await eventManager.publish(eventName, 'data');
+  
     expect(mockSubscriber).not.toHaveBeenCalled();
+  });
+
+  test('should subscribe to published event and call the callback', () => {
+    const eventName = 'testEvent';
+    const eventData = 'Test data';
+    
+    const callback = jest.fn();
+    const callback2 = jest.fn();
+
+    eventManager.subscribe(eventName, callback);
+    // Publish event
+    eventManager.publish(eventName, eventData);
+
+    eventManager.subscribe(eventName, callback2);
+
+    // Ensure the callback is called with the correct data
+    expect(callback2).toHaveBeenCalledWith(eventData);
   });
 
 });

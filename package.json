@@ -1,10 +1,10 @@
 {
   "name": "ga-pubsub",
-  "version": "1.0.1",
+  "version": "1.0.30",
   "description": "It establishes data communication between different components or systems using event-driven architecture",
   "main": "./EventManager/event.min.js",
   "scripts": {
-    "test": "npx test"
+    "test": "npx jest"
   },
   "jest": {
     "testMatch": [
@@ -19,13 +19,11 @@
     "publish",
     "subscribe",
     "pubsub",
-    "event",
-    "event-driven",
-    "event-driven",
-    "architecture",
-    "eventing",
-    "eventing",
-    "manager"
+    "live data",
+    "event-driven architecture",
+    "eventing manager",
+    "Scalable",
+    "Flexible"
   ],
   "author": "Ajithraj G",
   "license": "ISC",
