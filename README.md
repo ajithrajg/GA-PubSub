@@ -49,43 +49,70 @@ eventManager.publish('exampleEvent', eventData);
 Unsubscribe from specific events or remove all subscriptions.
 
 ```
-const id = eventManager.subscribe('exampleEvent', callback);
+const subscriber = eventManager.subscribe('exampleEvent', callback);
+
 // Unsubscribe from a specific event
-eventManager.unsubscribe('exampleEvent', id);
+await eventManager.unsubscribe(subscriber.eventName, subscriber.id);
 
 // Unsubscribe from all events
 eventManager.unsubscribeAll();
 ```
 
-<h2>Example - Best Practises</h2>
+<h2>Subscribe to an event at ANYTIME</h2>
+
+```
+const eventName = 'testEvent';
+const eventData = 'Test data';
+    
+function callback(data) {
+    console.log('Event received:', data);
+}
+
+// Publish event
+eventManager.publish(eventName, eventData);
+
+const subscriber = eventManager.subscribe(eventName, callback);
+```
+
+<h2>Sample Code to Get Started</h2>
 
 ```
 const { getEventingManagerInstance } = require('ga-pubsub');
 
 // Initialize the event manager
 let eventManager = getEventingManagerInstance('pubsub');
-
-// Subscribe to an event
-const id_1 = eventManager.subscribe('exampleEvent', callback_1);
+let subscriberList = [];
 
 const callback_1 = (data) => {
   // Handle the event data
   console.log('Event received:', data);
-  eventManager.unsubscribe('exampleEvent', id_1);
 };
+
+// Subscribe to an event
+addSubscribe('exampleEvent', callback_1);
 
 // Publish an event
 const eventData = { 'key': 'value' };
 eventManager.publish('exampleEvent', eventData);
 
-// Subscribe to an event at anytime
-const id_2 = eventManager.subscribe('exampleEvent', callback_2);
-
 const callback_2 = (data) => {
   // Handle the event data
   console.log('Event received:', data);
-  eventManager.unsubscribe('exampleEvent', id_2);
 };
+
+// Subscribe to an event at anytime
+addSubscribe('exampleEvent', callback_2);
+
+function addSubscriber(eventName, callback) {
+  const subscriber = eventManager.subscribe(eventName, callback);
+  this.subscriberList.push(subscriber);
+}
+
+// Unsubscribe after completion 
+this.subscriberList.forEach(subscriber => {
+  eventManager.unsubscribe(subscriber.eventName, subscriber.id);
+})
+
 ```
 
 <h2>License</h2>

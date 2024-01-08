@@ -36,7 +36,7 @@ class EventingManagerService {
     }
   
     // Return the unique identifier, which can be used for unsubscribing
-    return id;
+    return {eventName,id};
   }
   
 
@@ -66,6 +66,9 @@ class EventingManagerService {
           }
         }
       }
+    }
+    else {
+      this.history[eventName] = data;
     }
   }
 

@@ -134,8 +134,8 @@ describe('EventManager', () => {
     const eventName = 'unsubscribeEvent';
     const mockSubscriber = jest.fn();
   
-    const subscriberId = eventManager.subscribe(eventName, mockSubscriber);
-    await eventManager.unsubscribe(eventName, subscriberId); // Await the unsubscribe operation
+    const subscriberData = eventManager.subscribe(eventName, mockSubscriber);
+    await eventManager.unsubscribe(subscriberData.eventName, subscriberData.id); // Await the unsubscribe operation
     await eventManager.publish(eventName, 'data');
   
     expect(mockSubscriber).not.toHaveBeenCalled();
@@ -157,5 +157,18 @@ describe('EventManager', () => {
     // Ensure the callback is called with the correct data
     expect(callback2).toHaveBeenCalledWith(eventData);
   });
+
+  test('should subscribe to published event at anytime', () => {
+
+    const eventName = 'testEvent';
+    const eventData = 'Test data';
+    const callback = jest.fn();
+
+    eventManager.publish(eventName, eventData);
+
+    eventManager.subscribe(eventName, callback);
+
+    expect(callback).toHaveBeenCalledWith(eventData);
+  })
 
 });
