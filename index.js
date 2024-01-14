@@ -1,31 +1,13 @@
-const EventManager = require('./EventManager/event');
+'use strict';
 
-let eventManager;
+const gaPubsub = require('./ga-pubsub');
 
-eventManager = EventManager.getEventingManagerInstance('pubsub');
-
-const eventName = 'unsubscribeEvent';
-function mockSubscriber() {
-    console.log('callback executed');
+// Support CommonJS (Node.js, React)
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+  module.exports = gaPubsub;
 }
 
-function mockSubscriber1() {
-    console.log('callback1 executed');
-}
-
-funct();
-
-async function funct() {
-    const eventName = 'testEvent';
-    const eventData = 'Test data';
-    
-    const callback = mockSubscriber;
-    eventManager.subscribe(eventName, mockSubscriber1);
-
-    // Publish event
-    eventManager.publish(eventName, eventData);
-
-    eventManager.subscribe(eventName, mockSubscriber);
-
-    // Ensure the callback is called with the correct data
+// Support ES6 Modules (Angular)
+if (typeof exports !== 'undefined') {
+  exports.default = gaPubsub;
 }

@@ -1,5 +1,5 @@
 // event.test.js
-const EventManager = require('./EventManager/event.min');
+const EventManager = require('./ga-pubsub');
 
 describe('EventManager', () => {
   let eventManager;

@@ -8,6 +8,9 @@ To install the PubSub Eventing Manager, use the following npm command:
 
 **npm install ga-pubsub**
 
+<h2>Support</h2>
+
+It works in both CommonJS and ES6 Modules.
 
 <h2>Getting Started</h2>
 
@@ -89,7 +92,7 @@ const callback_1 = (data) => {
 };
 
 // Subscribe to an event
-addSubscribe('exampleEvent', callback_1);
+addSubscriber('exampleEvent', callback_1);
 
 // Publish an event
 const eventData = { 'key': 'value' };
@@ -101,7 +104,7 @@ const callback_2 = (data) => {
 };
 
 // Subscribe to an event at anytime
-addSubscribe('exampleEvent', callback_2);
+addSubscriber('exampleEvent', callback_2);
 
 function addSubscriber(eventName, callback) {
   const subscriber = eventManager.subscribe(eventName, callback);
