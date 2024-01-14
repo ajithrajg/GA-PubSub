@@ -1,6 +1,6 @@
 {
   "name": "ga-pubsub",
-  "version": "1.0.42",
+  "version": "1.0.43",
   "description": "It establishes data communication between different components or systems using event-driven architecture",
   "main": "index.js",
   "scripts": {

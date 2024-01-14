@@ -1,6 +1,6 @@
 'use strict';
 
-const gaPubsub = require('./ga-pubsub');
+const gaPubsub = require('./ga-pubsub.min');
 
 // Support CommonJS (Node.js, React)
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
