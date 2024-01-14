@@ -269,45 +269,6 @@ subscriberList.forEach(subscriber => {
 });
 ```
 
-ES6:
-```
-import { getEventingManagerInstance } from 'ga-pubsub';
-
-// Initialize the event manager
-const eventManager = getEventingManagerInstance('pubsub');
-let subscriberList = [];
-
-const callback_1 = (data) => {
-  // Handle the event data
-  console.log('Event received:', data);
-};
-
-// Subscribe to an event
-addSubscriber('exampleEvent', callback_1);
-
-// Publish an event
-const eventData = { 'key': 'value' };
-eventManager.publish('exampleEvent', eventData);
-
-const callback_2 = (data) => {
-  // Handle the event data
-  console.log('Event received:', data);
-};
-
-// Subscribe to an event at any time
-addSubscriber('exampleEvent', callback_2);
-
-function addSubscriber(eventName, callback) {
-  const subscriber = eventManager.subscribe(eventName, callback);
-  subscriberList.push(subscriber);
-}
-
-// Unsubscribe after completion 
-subscriberList.forEach(subscriber => {
-  eventManager.unsubscribe(subscriber.eventName, subscriber.id);
-});
-```
-
 Typescript:
 ```
 private eventManager = getEventingManagerInstance('pubsub');
