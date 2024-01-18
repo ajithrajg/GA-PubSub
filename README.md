@@ -1,6 +1,6 @@
 <h2>About</h2>
 
-A <b>lightweight</b> and <b>flexible PubSub</b> (Publish-Subscribe) event manager for <b>JavaScript environments</b>. This package <b>enables seamless communication</b> between different parts of your application by allowing components to subscribe to specific events and react accordingly when those events are published.
+A <b>lightweight</b> and <b>flexible PubSub</b> (Publish-Subscribe) event manager for <b>JavaScript environments</b>. This package <b>enables seamless communication</b> within and between the application by allowing components to subscribe to specific events and react accordingly when those events are published.
 
 <h2>Installation</h2>
 
