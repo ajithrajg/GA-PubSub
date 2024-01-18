@@ -1,7 +1,7 @@
 {
   "name": "ga-pubsub",
   "version": "1.0.46",
-  "description": "It establishes data communication between different components or systems using event-driven architecture",
+  "description": "It establishes data communication within and between the application or systems using event-driven architecture",
   "main": "ga-pubsub.js",
   "scripts": {
     "test": "npx jest"
