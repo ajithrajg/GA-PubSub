@@ -1,174 +1,185 @@
-// event.test.js
 const EventManager = require('./ga-pubsub');
 
-describe('EventManager', () => {
-  let eventManager;
+describe('GA-PubSub (Multi-Tenant Enhanced EventManager)', () => {
+  let bus;
 
   beforeEach(() => {
-    eventManager = EventManager.getEventingManagerInstance('pubsub');
+    // isolate each test fully
+    EventManager.resetAll?.();
+
+    bus = EventManager.getEventingManagerInstance('test-tenant');
   });
 
-  test('should subscribe to and publish an event', () => {
-    // Arrange
-    const callback = jest.fn();
-    const eventData = { 'key': 'value' };
-
-    // Act
-    eventManager.subscribe('exampleEvent', callback);
-    eventManager.publish('exampleEvent', eventData);
-
-    // Assert
-    expect(callback).toHaveBeenCalledWith(eventData);
-  });
-
-  test('should handle multiple subscribers', () => {
-    // Arrange
-    const callback1 = jest.fn();
-    const callback2 = jest.fn();
-    const eventData = { 'key': 'value' };
-
-    // Act
-    eventManager.subscribe('exampleEvent', callback1);
-    eventManager.subscribe('exampleEvent', callback2);
-    eventManager.publish('exampleEvent', eventData);
-
-    // Assert
-    expect(callback1).toHaveBeenCalledWith(eventData);
-    expect(callback2).toHaveBeenCalledWith(eventData);
-  });
-
-  test('should not call subscribers for unregistered events', () => {
-    // Arrange
+  test('should subscribe to and publish an event', async () => {
     const callback = jest.fn();
 
-    // Act
-    eventManager.subscribe('registeredEvent', callback);
-    eventManager.publish('unregisteredEvent', {});
+    bus.subscribe('exampleEvent', callback);
 
-    // Assert
-    expect(callback).not.toHaveBeenCalled();
+    await bus.publish('exampleEvent', { key: 'value' });
+
+    expect(callback).toHaveBeenCalledWith({ key: 'value' });
   });
 
-  test('should handle synchronous event subscribers', () => {
-    const eventName = 'syncEvent';
-    const mockSubscriber = jest.fn();
+  test('should handle multiple subscribers', async () => {
+    const cb1 = jest.fn();
+    const cb2 = jest.fn();
 
-    eventManager.subscribe(eventName, mockSubscriber);
-    eventManager.publish(eventName, 'data');
+    bus.subscribe('multiEvent', cb1);
+    bus.subscribe('multiEvent', cb2);
 
-    expect(mockSubscriber).toHaveBeenCalledWith('data');
+    await bus.publish('multiEvent', 'data');
+
+    expect(cb1).toHaveBeenCalledWith('data');
+    expect(cb2).toHaveBeenCalledWith('data');
   });
 
-  test('should handle asynchronous event subscribers', async () => {
-    const eventName = 'asyncEvent';
-    const asyncSubscriber = async (data) => {
+  test('should not leak events across tenants', async () => {
+    const busA = EventManager.getEventingManagerInstance('A');
+    const busB = EventManager.getEventingManagerInstance('B');
+
+    const cbA = jest.fn();
+    const cbB = jest.fn();
+
+    busA.subscribe('event', cbA);
+    busB.subscribe('event', cbB);
+
+    await busA.publish('event', 'A-data');
+
+    expect(cbA).toHaveBeenCalledWith('A-data');
+    expect(cbB).not.toHaveBeenCalled();
+  });
+
+  test('should handle synchronous subscribers', async () => {
+    const cb = jest.fn();
+
+    bus.subscribe('syncEvent', cb);
+
+    await bus.publish('syncEvent', 'sync-data');
+
+    expect(cb).toHaveBeenCalledWith('sync-data');
+  });
+
+  test('should handle async subscribers safely', async () => {
+    const asyncCb = jest.fn(async (data) => {
       return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(`Processed ${data}`);
-        }, 100);
+        setTimeout(() => resolve(`processed-${data}`), 20);
       });
-    };
+    });
 
-    const mockSubscriber = jest.fn();
+    bus.subscribe('asyncEvent', asyncCb);
 
-    eventManager.subscribe(eventName, asyncSubscriber);
-    await eventManager.publish(eventName, 'data');
+    await bus.publish('asyncEvent', 'data');
 
-    expect(mockSubscriber).not.toHaveBeenCalled(); // Asynchronous subscriber should not be called synchronously
+    expect(asyncCb).toHaveBeenCalledWith('data');
   });
 
-  test('should handle asynchronous function as argument and handle in subscription', async () => {
-    const eventName = 'asyncEvent';
-    const asyncSubscriber = async (data) => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(`Processed ${data}`);
-        }, 100);
-      });
-    };
+  test('should isolate errors between subscribers', async () => {
+    const good = jest.fn();
+    const bad = jest.fn(() => {
+      throw new Error('failure');
+    });
 
-    const mockSubscriber = jest.fn();
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    eventManager.subscribe(eventName, asyncSubscriber);
-    await eventManager.publish(eventName, 'data');
+    bus.subscribe('errorEvent', bad);
+    bus.subscribe('errorEvent', good);
 
-    // Ensure that the asyncSubscriber is called with the correct data
-    expect(mockSubscriber).not.toHaveBeenCalled();
+    await bus.publish('errorEvent', 'data');
+
+    expect(good).toHaveBeenCalledWith('data');
+    expect(consoleSpy).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
   });
 
-  test('should handle simple data as argument and handle in subscription', () => {
-    const eventName = 'simpleDataEvent';
-    const mockSubscriber = jest.fn();
+  test('should unsubscribe a subscriber correctly', async () => {
+    const cb = jest.fn();
 
-    eventManager.subscribe(eventName, mockSubscriber);
-    eventManager.publish(eventName, 'data');
+    const { eventName, id } = bus.subscribe('removeEvent', cb);
 
-    // Ensure that the mockSubscriber is called with the correct data
-    expect(mockSubscriber).toHaveBeenCalledWith('data');
+    bus.unsubscribe(eventName, id);
+
+    await bus.publish(eventName, 'data');
+
+    expect(cb).not.toHaveBeenCalled();
   });
 
-  test('should handle error in asynchronous function', async () => {
-    const eventName = 'errorEvent';
-    const asyncSubscriberWithError = async () => {
-      throw new Error('Async error');
-    };
-  
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-  
-    eventManager.subscribe(eventName, asyncSubscriberWithError);
-  
-    // Ensure that the error is caught and logged
-    try {
-      await eventManager.publish(eventName, 'data');
-      // If we reach this point, the async function did not throw an error
-      expect(true).toBe(true);
-    } catch (error) {
-      expect(error.message).toBe('Async error');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Async error'));
-    } finally {
-      consoleErrorSpy.mockRestore();
-    }
-  });
-  
-  test('should unsubscribe a subscriber', async () => {
-    const eventName = 'unsubscribeEvent';
-    const mockSubscriber = jest.fn();
-  
-    const subscriberData = eventManager.subscribe(eventName, mockSubscriber);
-    await eventManager.unsubscribe(subscriberData.eventName, subscriberData.id); // Await the unsubscribe operation
-    await eventManager.publish(eventName, 'data');
-  
-    expect(mockSubscriber).not.toHaveBeenCalled();
+  test('should support subscribeOnce behavior', async () => {
+    const cb = jest.fn();
+
+    bus.subscribeOnce('onceEvent', cb);
+
+    await bus.publish('onceEvent', 'first');
+    await bus.publish('onceEvent', 'second');
+
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith('first');
   });
 
-  test('should subscribe to published event and call the callback', () => {
-    const eventName = 'testEvent';
-    const eventData = 'Test data';
-    
-    const callback = jest.fn();
-    const callback2 = jest.fn();
+  test('should support wildcard events', async () => {
+    const cb = jest.fn();
 
-    eventManager.subscribe(eventName, callback);
-    // Publish event
-    eventManager.publish(eventName, eventData);
+    bus.subscribe('user:*', cb);
 
-    eventManager.subscribe(eventName, callback2);
+    await bus.publish('user:created', { id: 1 });
+    await bus.publish('user:deleted', { id: 2 });
 
-    // Ensure the callback is called with the correct data
-    expect(callback2).toHaveBeenCalledWith(eventData);
+    expect(cb).toHaveBeenCalledTimes(2);
   });
 
-  test('should subscribe to published event at anytime', () => {
+  test('should return correct subscriber count', () => {
+    bus.subscribe('countEvent', jest.fn());
+    bus.subscribe('countEvent', jest.fn());
 
-    const eventName = 'testEvent';
-    const eventData = 'Test data';
-    const callback = jest.fn();
+    expect(bus.getSubscriberCount('countEvent')).toBe(2);
+  });
 
-    eventManager.publish(eventName, eventData);
+  test('should return list of active events', () => {
+    bus.subscribe('a', jest.fn());
+    bus.subscribe('b', jest.fn());
 
-    eventManager.subscribe(eventName, callback);
+    const events = bus.getEvents();
 
-    expect(callback).toHaveBeenCalledWith(eventData);
-  })
+    expect(events).toContain('a');
+    expect(events).toContain('b');
+  });
 
+  test('should unsubscribeEvent remove all listeners', async () => {
+    const cb1 = jest.fn();
+    const cb2 = jest.fn();
+
+    bus.subscribe('bulkEvent', cb1);
+    bus.subscribe('bulkEvent', cb2);
+
+    bus.unsubscribeEvent('bulkEvent');
+
+    await bus.publish('bulkEvent', 'data');
+
+    expect(cb1).not.toHaveBeenCalled();
+    expect(cb2).not.toHaveBeenCalled();
+  });
+
+  test('should unsubscribeAll clear everything safely', async () => {
+    const cb = jest.fn();
+
+    bus.subscribe('x', cb);
+    bus.subscribe('y', cb);
+
+    bus.unsubscribeAll();
+
+    await bus.publish('x', 'data');
+    await bus.publish('y', 'data');
+
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  test('should respect replay opt-out', () => {
+    const cb = jest.fn();
+
+    bus.publish('replayEvent', 'first');
+
+    bus.subscribe('replayEvent', cb, { replay: false });
+
+    expect(cb).not.toHaveBeenCalledWith('first');
+  });
 });
