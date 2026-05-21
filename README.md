@@ -10,11 +10,11 @@ To install the PubSub Eventing Manager, use the following npm command:
 
 <h2>Support</h2>
 
-This package follows **event-driven architecture**, utilizes the **UMD pattern**, and is **compatible** with **both CommonJS and ES6 Modules**.
+This package follows <b>event-driven architecture</b>, utilizes the <b>UMD pattern</b>, and is <b>compatible with both CommonJS and ES6 Modules</b>. It also supports <b>multi-tenant event isolation using namespaces</b> and includes <b>enhanced replay, wildcard, and subscription lifecycle management features</b>.
 
 <h2>Getting Started</h2>
 
-To initialize the event manager, use the provided function getEventingManagerInstance and pass the argument 'pubsub'. This ensures **a singleton instance of the Eventing Manager** is created and shared across your application.
+To initialize the event manager, use the provided function getEventingManagerInstance and pass a namespace argument. This ensures a <b>separate or shared instance based on namespace</b> with fully isolated event handling and history tracking.
 
 CommonJS:
 ```
@@ -112,8 +112,7 @@ CommonJS:
 ```
 const subscriber = eventManager.subscribe('exampleEvent', callback);
 
-// Unsubscribe from a specific event
-await eventManager.unsubscribe(subscriber.eventName, subscriber.id);
+eventManager.unsubscribe(subscriber.eventName, subscriber.id);
 
 // Unsubscribe from all events
 eventManager.unsubscribeAll();
@@ -123,8 +122,7 @@ ES6:
 ```
 const subscriber = eventManager.subscribe('exampleEvent', callback);
 
-// Unsubscribe from a specific event
-await this.eventManager.unsubscribe(subscriber.eventName, subscriber.id);
+this.eventManager.unsubscribe(subscriber.eventName, subscriber.id);
 
 // Unsubscribe from all events
 this.eventManager.unsubscribeAll();
@@ -134,8 +132,7 @@ Typescript:
 ```
 const subscriber = eventManager.subscribe('exampleEvent', callback);
 
-// Unsubscribe from a specific event
-await eventManager.unsubscribe(subscriber.eventName, subscriber.id);
+this.eventManager.unsubscribe(subscriber.eventName, subscriber.id);
 
 // Unsubscribe from all events
 eventManager.unsubscribeAll();
@@ -187,6 +184,14 @@ this.eventManager.publish(eventName, eventData);
 
 const subscriber = this.eventManager.subscribe(eventName, this.callback);
 ```
+<h2>Multi-Tenant Support</h2>
+
+The package supports isolated event buses using namespaces.
+```
+const busA = getEventingManagerInstance('A');
+const busB = getEventingManagerInstance('B');
+```
+Each namespace maintains independent subscribers and history.
 
 <h2>Sample Code to Get Started</h2>
 
