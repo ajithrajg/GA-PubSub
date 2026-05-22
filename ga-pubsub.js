@@ -75,11 +75,11 @@ class EventingManagerService {
         await Promise.allSettled(
             listeners.map(async ({ subscriber, subscribedEvent }) => {
                 try {
-                    await Promise.resolve(subscriber.callback(data));
-
                     if (subscriber.once) {
                         this.unsubscribe(subscribedEvent, subscriber.id);
                     }
+
+                    await Promise.resolve(subscriber.callback(data));
                 } catch (err) {
                     console.error(`[PubSub] Error in "${eventName}" subscriber:`, err);
                 }
