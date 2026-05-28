@@ -182,4 +182,91 @@ describe('GA-PubSub (Multi-Tenant Enhanced EventManager)', () => {
 
     expect(cb).not.toHaveBeenCalledWith('first');
   });
+
+  test('should respect replay opt-out on subscribe', () => {
+    const cb = jest.fn();
+
+    bus.publish('replaySubscribeEvent', 'first');
+
+    bus.subscribe('replaySubscribeEvent', cb, { replay: false });
+
+    expect(cb).not.toHaveBeenCalledWith('first');
+  });
+
+  // [NEW TEST]: Testing the publish side of the relay feature
+  test('should respect storeHistory opt-out on publish', async () => {
+    const cb = jest.fn();
+
+    // Publish an event but explicitly tell it NOT to store it for relay/history
+    await bus.publish('noRelayEvent', 'secret-data', { storeHistory: false });
+
+    // A late subscriber joins (with replay enabled by default)
+    bus.subscribe('noRelayEvent', cb);
+
+    // Callback should not fire because the event was never stored in history
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  test('should process middleware payload transform and pipeline cancellation', async () => {
+    bus.use((event, payload) => {
+      if (payload.dropMe) return false; // Aborts propagation entirely
+      return { ...payload, injectedKey: 'verified' }; // Transform
+    });
+
+    const outputCallback = jest.fn();
+    bus.subscribe('middleware:test', outputCallback);
+
+    await bus.publish('middleware:test', { value: 42 });
+    expect(outputCallback).toHaveBeenCalledWith({ value: 42, injectedKey: 'verified' });
+
+    await bus.publish('middleware:test', { dropMe: true });
+    expect(outputCallback).toHaveBeenCalledTimes(1); // Dropped by middleware interceptor
+  });
+
+  test('should assert functional hierarchical wildcards (* and **)', async () => {
+    const singleWildcardCallback = jest.fn();
+    const deepWildcardCallback = jest.fn();
+
+    bus.subscribe('store.*.billing', singleWildcardCallback);
+    bus.subscribe('store.**', deepWildcardCallback);
+
+    await bus.publish('store.us-east.billing', 'payload-1');
+    await bus.publish('store.eu-west.checkout.billing', 'payload-2');
+
+    expect(singleWildcardCallback).toHaveBeenCalledTimes(1); // Matches single level deep
+    expect(deepWildcardCallback).toHaveBeenCalledTimes(2);   // Matches both multi-level chains
+  });
+
+  test('should process subscribers in order of execution priorities', async () => {
+    const executionTraceOrder = [];
+
+    bus.subscribe('priority:test', () => executionTraceOrder.push('low-priority'), { priority: -10 });
+    bus.subscribe('priority:test', () => executionTraceOrder.push('high-priority'), { priority: 100 });
+    bus.subscribe('priority:test', () => executionTraceOrder.push('default-priority')); // Implicit 0
+
+    await bus.publish('priority:test', {});
+    expect(executionTraceOrder).toEqual(['high-priority', 'default-priority', 'low-priority']);
+  });
+
+  test('should pipe runtime operational failures directly to explicit DLQ onError hook', async () => {
+    const deadLetterQueueSpy = jest.fn();
+    const runtimeBus = EventManager.getEventingManagerInstance('dlq-tenant', {
+      onError: deadLetterQueueSpy
+    });
+
+    runtimeBus.subscribe('fail:event', () => {
+      throw new Error('Database connection timed out');
+    });
+
+    await runtimeBus.publish('fail:event', { data: 'packet' });
+
+    expect(deadLetterQueueSpy).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        phase: 'subscriber',
+        eventName: 'fail:event',
+        data: { data: 'packet' }
+      })
+    );
+  });
 });
