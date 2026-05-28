@@ -1,24 +1,48 @@
 /**
  * GA-PubSub - Multi-tenant Event System
- * Supports isolated namespaces (tenant-based event buses)
+ * Supports isolated namespaces, middleware execution, priority queues, and advanced wildcards.
  */
+
+function matchEventPattern(pattern, eventName) {
+    if (!pattern.includes('*')) return pattern === eventName;
+    
+    // Normalize and convert standard structural wildcards into safe regular expressions
+    const regexStr = '^' + pattern
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape regex control tokens except asterisk
+        .replace(/\\\*/g, '*')                 // Restore asterisks back to literal symbols
+        .replace(/\*\*/g, '___DOUBLE_WILD___') // Placeholder multi-level
+        .replace(/\*/g, '___SINGLE_WILD___')   // Placeholder single-level
+        .replace(/___DOUBLE_WILD___/g, '.*')    // Match everything structural
+        .replace(/___SINGLE_WILD___/g, '[^.:]+') + '$'; // Match single segment only
+        
+    return new RegExp(regexStr).test(eventName);
+}
 
 class EventingManagerService {
     constructor(options = {}) {
         this.eventRegistry = new Map();
         this.history = new Map();
         this.counter = 0;
+        this.middlewares = [];
 
         this.options = {
             replayLimit: options.replayLimit || 1,
             historyTTL: options.historyTTL || 0,
             enableWildcard: options.enableWildcard ?? true,
+            onError: options.onError || null,
         };
     }
 
     generate(prefix = "id") {
         this.counter += 1;
         return `${prefix}_${this.counter}`;
+    }
+
+    use(middlewareFn) {
+        if (typeof middlewareFn !== "function") {
+            throw new Error("Middleware must be a function");
+        }
+        this.middlewares.push(middlewareFn);
     }
 
     subscribe(eventName, callback, options = {}) {
@@ -32,6 +56,7 @@ class EventingManagerService {
             id,
             callback,
             once: options.once || false,
+            priority: options.priority || 0,
         };
 
         if (!this.eventRegistry.has(eventName)) {
@@ -40,7 +65,6 @@ class EventingManagerService {
 
         this.eventRegistry.get(eventName).set(id, subscriber);
 
-        // replay support
         if (options.replay !== false) {
             const historyData = this.getHistory(eventName);
 
@@ -49,7 +73,12 @@ class EventingManagerService {
                     try {
                         callback(item.data);
                     } catch (err) {
-                        console.error(`[PubSub] Replay error for "${eventName}":`, err);
+                        this.handleError(err, {
+                            eventName,
+                            data: item.data,
+                            phase: 'replay',
+                            subscriberId: id
+                        });
                     }
                 });
             }
@@ -65,40 +94,62 @@ class EventingManagerService {
         });
     }
 
-    async publish(eventName, data) {
-        this.storeHistory(eventName, data);
+    async publish(eventName, data, options = {}) {
+        let currentData = data;
 
-        const listeners = [...this.getMatchingSubscribers(eventName)];
+        // 1. Process Middleware Interceptor Chain
+        for (const middleware of this.middlewares) {
+            try {
+                const result = await Promise.resolve(middleware(eventName, currentData));
+                if (result === false) return; // Middleware aborted execution pipeline safely
+                if (result !== undefined) {
+                    currentData = result; // Interceptor mutated data payload
+                }
+            } catch (err) {
+                this.handleError(err, { eventName, data: currentData, phase: 'middleware' });
+                return;
+            }
+        }
 
+        // 2. Manage History Registries
+        const storeHistory = options.storeHistory !== false;
+        if (storeHistory) {
+            this.storeHistory(eventName, currentData);
+        }
+
+        // 3. Resolve and Sort Subscribers by Priority Grouping
+        const listeners = this.getMatchingSubscribers(eventName);
         if (listeners.length === 0) return;
 
-        await Promise.allSettled(
-            listeners.map(async ({ subscriber, subscribedEvent }) => {
-                try {
-                    if (subscriber.once) {
-                        this.unsubscribe(subscribedEvent, subscriber.id);
-                    }
-
-                    await Promise.resolve(subscriber.callback(data));
-                } catch (err) {
-                    console.error(`[PubSub] Error in "${eventName}" subscriber:`, err);
+        // 4. Sequential Execution Loop to strict-honor Subscriber Prioritization order
+        for (const { subscriber, subscribedEvent } of listeners) {
+            try {
+                if (subscriber.once) {
+                    this.unsubscribe(subscribedEvent, subscriber.id);
                 }
-            })
-        );
+                await Promise.resolve(subscriber.callback(currentData));
+            } catch (err) {
+                this.handleError(err, {
+                    eventName,
+                    data: currentData,
+                    subscriberId: subscriber.id,
+                    phase: 'subscriber'
+                });
+            }
+        }
     }
 
     getMatchingSubscribers(eventName) {
         const listeners = [];
 
         for (const [registeredEvent, subscribers] of this.eventRegistry.entries()) {
-            const isExact = registeredEvent === eventName;
+            let isMatch = registeredEvent === eventName;
 
-            const isWildcard =
-                this.options.enableWildcard &&
-                registeredEvent.endsWith("*") &&
-                eventName.startsWith(registeredEvent.slice(0, -1));
+            if (!isMatch && this.options.enableWildcard) {
+                isMatch = matchEventPattern(registeredEvent, eventName);
+            }
 
-            if (isExact || isWildcard) {
+            if (isMatch) {
                 for (const subscriber of subscribers.values()) {
                     listeners.push({
                         subscribedEvent: registeredEvent,
@@ -108,7 +159,8 @@ class EventingManagerService {
             }
         }
 
-        return listeners;
+        // Higher sorting scalar values bubble up to run first
+        return listeners.sort((a, b) => b.subscriber.priority - a.subscriber.priority);
     }
 
     storeHistory(eventName, data) {
@@ -119,7 +171,6 @@ class EventingManagerService {
         }
 
         const historyItems = this.history.get(eventName);
-
         historyItems.push({ data, timestamp: now });
 
         if (historyItems.length > this.options.replayLimit) {
@@ -134,30 +185,37 @@ class EventingManagerService {
 
         if (this.options.historyTTL > 0) {
             const now = Date.now();
-
             const validItems = items.filter(
                 (item) => now - item.timestamp <= this.options.historyTTL
             );
-
             this.history.set(eventName, validItems);
-
             return validItems;
         }
 
         return items;
     }
 
+    handleError(error, context) {
+        if (typeof this.options.onError === 'function') {
+            try {
+                this.options.onError(error, context);
+            } catch (fallbackErr) {
+                console.error('[PubSub] Hook Crash:', fallbackErr);
+                console.error('[PubSub] Intercepted Base System Error:', error, context);
+            }
+        } else {
+            console.error(`[PubSub] Unhandled exception occurred in context: [${context.phase}]`, error);
+        }
+    }
+
     unsubscribe(eventName, id) {
         const subscribers = this.eventRegistry.get(eventName);
-
         if (!subscribers) return false;
 
         const removed = subscribers.delete(id);
-
         if (subscribers.size === 0) {
             this.eventRegistry.delete(eventName);
         }
-
         return removed;
     }
 
@@ -181,6 +239,7 @@ class EventingManagerService {
 
     destroy() {
         this.unsubscribeAll();
+        this.middlewares = [];
     }
 }
 
@@ -199,20 +258,13 @@ function getEventingManagerInstance(namespace = "default", options = {}) {
     if (!registry.has(namespace)) {
         registry.set(namespace, new EventingManagerService(options));
     }
-
     return registry.get(namespace);
 }
 
-/**
- * Reset a single namespace (useful for tests)
- */
 function resetNamespace(namespace) {
     registry.delete(namespace);
 }
 
-/**
- * Reset everything (dev/test only)
- */
 function resetAll() {
     registry.clear();
 }

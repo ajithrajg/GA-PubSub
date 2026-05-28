@@ -1,325 +1,485 @@
-<h2>About</h2>
+# ga-pubsub
 
-A <b>lightweight</b> and <b>flexible PubSub</b> (Publish-Subscribe) event manager for <b>JavaScript environments</b>. This package <b>enables seamless communication</b> within and between the application by allowing components to subscribe to specific events and react accordingly when those events are published.
+Lightweight, scalable, and TypeScript-first PubSub event manager for JavaScript applications.
 
-<h2>Installation</h2>
+Supports wildcard routing, middleware pipelines, replayable events, multi-tenant isolation, and priority-based subscriptions — all with zero dependencies.
 
-To install the PubSub Eventing Manager, use the following npm command:
+---
 
-**npm install ga-pubsub**
+# Installation
 
-<h2>Support</h2>
-
-This package follows <b>event-driven architecture</b>, utilizes the <b>UMD pattern</b>, and is <b>compatible with both CommonJS and ES6 Modules</b>. It also supports <b>multi-tenant event isolation using namespaces</b> and includes <b>enhanced replay, wildcard, and subscription lifecycle management features</b>.
-
-<h2>Getting Started</h2>
-
-To initialize the event manager, use the provided function getEventingManagerInstance and pass a namespace argument. This ensures a <b>separate or shared instance based on namespace</b> with fully isolated event handling and history tracking.
-
-CommonJS:
+```bash
+npm install ga-pubsub
 ```
+
+---
+
+# Quick Example
+
+```ts
+import { getEventingManagerInstance } from 'ga-pubsub';
+
+type UserPayload = {
+  id: number;
+  name: string;
+};
+
+const bus = getEventingManagerInstance('app');
+
+// Subscribe
+bus.subscribe<UserPayload>(
+  'user:created',
+  (user) => {
+
+    // IDE autocomplete supported
+    console.log(user.id);
+    console.log(user.name);
+  }
+);
+
+// Publish
+bus.publish<UserPayload>(
+  'user:created',
+  {
+    id: 1,
+    name: 'Ajith'
+  }
+);
+```
+
+---
+
+# Why ga-pubsub?
+
+| Feature | EventEmitter | ga-pubsub |
+|---------|--------------|-----------|
+| Wildcard Routing | ❌ | ✅ |
+| Middleware Support | ❌ | ✅ |
+| Event Replay | ❌ | ✅ |
+| Priority Subscriptions | ❌ | ✅ |
+| Multi-Tenant Isolation | ❌ | ✅ |
+| TypeScript Generics | Limited | ✅ |
+| Zero Dependencies | ✅ | ✅ |
+| UMD Compatibility | ❌ | ✅ |
+
+---
+
+# Core Features
+
+- Zero dependencies
+- TypeScript-first API
+- Generic payload support
+- Multi-tenant event isolation
+- Middleware interceptors
+- Wildcard event routing
+- Replayable event history
+- Priority-based subscriber execution
+- Global error handling (DLQ)
+- Browser + Node.js support
+- UMD architecture
+- ES5 + CommonJS + ES Modules compatible
+
+---
+
+# Runtime Compatibility
+
+`ga-pubsub` follows the UMD (Universal Module Definition) pattern, making it compatible across modern and legacy JavaScript environments.
+
+| Environment | Supported |
+|-------------|-----------|
+| ES5 Browsers | ✅ |
+| CommonJS | ✅ |
+| ES Modules | ✅ |
+| TypeScript | ✅ |
+| Node.js | ✅ |
+| Browser CDN Usage | ✅ |
+
+---
+
+# Architecture
+
+```text
+  Publisher
+      │
+      ▼
+┌─────────────┐
+│ ga-pubsub   │
+└─────────────┘
+│      │      │
+▼      ▼      ▼
+UI  Analytics Logger
+```
+
+---
+
+# Getting Started
+
+## CommonJS
+
+```js
 const { getEventingManagerInstance } = require('ga-pubsub');
 
-// Initialize the event manager
-const eventManager = getEventingManagerInstance('pubsub');
+const eventManager = getEventingManagerInstance('tenant-a');
 ```
 
-ES6:
-```
+## ES Modules
+
+```js
 import { getEventingManagerInstance } from 'ga-pubsub';
 
-// Initialize the event manager
-const eventManager = getEventingManagerInstance('pubsub');
+const eventManager = getEventingManagerInstance('tenant-a');
 ```
 
-Typescript:
-```
+## TypeScript
+
+```ts
 import { getEventingManagerInstance } from 'ga-pubsub';
 
-// Initialize the event manager
-private eventManager = getEventingManagerInstance('pubsub');
-```
+const eventManager = getEventingManagerInstance('tenant-a', {
+  replayLimit: 10,
 
-<h2>Usage</h2>
-
-<h2>Subscribing to events</h2>
-Subscribing to events by providing an event name and a callback function. The callback function will be invoked whenever the specified event is published.
-
-CommonJS:
-```
-const callback = (data) => {
-  // Handle the event data
-  console.log('Event received:', data);
-};
-
-// Subscribe to an event
-eventManager.subscribe('exampleEvent', callback);
-```
-
-ES6:
-```
-const callback = (data) => {
-  // Handle the event data
-  console.log('Event received:', data);
-};
-
-// Subscribe to an event
-eventManager.subscribe('exampleEvent', callback);
-```
-
-Typescript:
-```
-private callback = (data: any) => {
-  // Handle the event data
-  console.log('Event received:', data);
-};
-
-// Subscribe to an event
-this.eventManager.subscribe('exampleEvent', this.callback);
-```
-
-<h2>Publishing Events</h2>
-Publish events with associated data. Subscribed functions will be called with the provided data when the event is published.
-
-CommonJS:
-```
-const eventData = { 'key': 'value' };
-
-// Publish an event
-eventManager.publish('exampleEvent', eventData);
-```
-
-ES6:
-```
-// Publish an event
-const eventData = { 'key': 'value' };
-
-this.eventManager.publish('exampleEvent', eventData);
-```
-
-Typescript:
-```
-// Publish an event
-const eventData = { 'key': 'value' };
-
-this.eventManager.publish('exampleEvent', eventData);
-```
-
-<h2>Unsubscribing from an event</h2>
-Unsubscribe from specific events or remove all subscriptions.
-
-CommonJS:
-```
-const subscriber = eventManager.subscribe('exampleEvent', callback);
-
-eventManager.unsubscribe(subscriber.eventName, subscriber.id);
-
-// Unsubscribe from all events
-eventManager.unsubscribeAll();
-```
-
-ES6:
-```
-const subscriber = eventManager.subscribe('exampleEvent', callback);
-
-this.eventManager.unsubscribe(subscriber.eventName, subscriber.id);
-
-// Unsubscribe from all events
-this.eventManager.unsubscribeAll();
-```
-
-Typescript:
-```
-const subscriber = eventManager.subscribe('exampleEvent', callback);
-
-this.eventManager.unsubscribe(subscriber.eventName, subscriber.id);
-
-// Unsubscribe from all events
-eventManager.unsubscribeAll();
-```
-
-<h2>Subscribe to an event at ANYTIME</h2>
-
-CommonJS:
-```
-const eventName = 'testEvent';
-const eventData = 'Test data';
-    
-function callback(data) {
-    console.log('Event received:', data);
-}
-
-// Publish event
-eventManager.publish(eventName, eventData);
-
-const subscriber = eventManager.subscribe(eventName, callback);
-```
-
-ES6:
-```
-const eventName = 'testEvent';
-const eventData = 'Test data';
-    
-function callback(data) {
-    console.log('Event received:', data);
-}
-
-// Publish event
-eventManager.publish(eventName, eventData);
-
-const subscriber = eventManager.subscribe(eventName, callback);
-```
-
-Typescript:
-```
-const eventName = 'testEvent';
-const eventData = 'Test data';
-    
-private callback = (data: any) => {
-    console.log('Event received:', data);
-}
-
-// Publish event
-this.eventManager.publish(eventName, eventData);
-
-const subscriber = this.eventManager.subscribe(eventName, this.callback);
-```
-<h2>Multi-Tenant Support</h2>
-
-The package supports isolated event buses using namespaces.
-```
-const busA = getEventingManagerInstance('A');
-const busB = getEventingManagerInstance('B');
-```
-Each namespace maintains independent subscribers and history.
-
-<h2>Sample Code to Get Started</h2>
-
-CommonJS:
-```
-const { getEventingManagerInstance } = require('ga-pubsub');
-
-// Initialize the event manager
-let eventManager = getEventingManagerInstance('pubsub');
-let subscriberList = [];
-
-const callback_1 = (data) => {
-  // Handle the event data
-  console.log('Event received:', data);
-};
-
-// Subscribe to an event
-addSubscriber('exampleEvent', callback_1);
-
-// Publish an event
-const eventData = { 'key': 'value' };
-eventManager.publish('exampleEvent', eventData);
-
-const callback_2 = (data) => {
-  // Handle the event data
-  console.log('Event received:', data);
-};
-
-// Subscribe to an event at anytime
-addSubscriber('exampleEvent', callback_2);
-
-function addSubscriber(eventName, callback) {
-  const subscriber = eventManager.subscribe(eventName, callback);
-  this.subscriberList.push(subscriber);
-}
-
-// Unsubscribe after completion 
-this.subscriberList.forEach(subscriber => {
-  eventManager.unsubscribe(subscriber.eventName, subscriber.id);
-})
-
-```
-
-ES6:
-```
-import { getEventingManagerInstance } from 'ga-pubsub';
-
-// Initialize the event manager
-const eventManager = getEventingManagerInstance('pubsub');
-let subscriberList = [];
-
-const callback_1 = (data) => {
-  // Handle the event data
-  console.log('Event received:', data);
-};
-
-// Subscribe to an event
-addSubscriber('exampleEvent', callback_1);
-
-// Publish an event
-const eventData = { 'key': 'value' };
-eventManager.publish('exampleEvent', eventData);
-
-const callback_2 = (data) => {
-  // Handle the event data
-  console.log('Event received:', data);
-};
-
-// Subscribe to an event at any time
-addSubscriber('exampleEvent', callback_2);
-
-function addSubscriber(eventName, callback) {
-  const subscriber = eventManager.subscribe(eventName, callback);
-  subscriberList.push(subscriber);
-}
-
-// Unsubscribe after completion 
-subscriberList.forEach(subscriber => {
-  eventManager.unsubscribe(subscriber.eventName, subscriber.id);
+  onError: (error, context) => {
+    console.error('DLQ Error:', error, context);
+  }
 });
 ```
 
-Typescript:
+---
+
+# API Overview
+
+## Core Methods
+
+| Method | Description |
+|--------|-------------|
+| `publish(event, payload, options?)` | Publish an event |
+| `subscribe(event, callback, options?)` | Subscribe to an event |
+| `subscribeOnce(event, callback, options?)` | Subscribe once and auto-remove |
+| `unsubscribe(event, id)` | Remove a subscriber |
+| `unsubscribeEvent(event)` | Remove all subscribers for an event |
+| `unsubscribeAll()` | Clear entire event bus |
+| `destroy()` | Destroy current event manager instance |
+
+## Advanced Methods
+
+| Method | Description |
+|--------|-------------|
+| `use(middleware)` | Register middleware |
+| `getHistory(event)` | Access replay history |
+
+---
+
+# Publishing Events
+
+```ts
+eventManager.publish('user:created', {
+  id: 1,
+  name: 'Ajith'
+});
 ```
-private eventManager = getEventingManagerInstance('pubsub');
-private subscriberList: any[] = [];
 
-ngOnInit() {
-  this.subscribeToEvent('exampleEvent', this.handleEvent1);
+## Transient Events
 
-  const eventData = { 'key': 'value' };
-  this.eventManager.publish('exampleEvent', eventData);
+Skip history storage for high-frequency events.
 
-  this.subscribeToEvent('exampleEvent', this.handleEvent2);
-}
-
-ngOnDestroy() {
-  this.unsubscribeAll();
-}
-
-private handleEvent1(data:any) {
-  console.log('Event received:', data);
-}
-
-private handleEvent2(data:any) {
-  console.log('Event received:', data);
-}
-
-private subscribeToEvent(eventName:string, callback:any) {
-  const subscriber = this.eventManager.subscribe(eventName, callback);
-  this.subscriberList.push(subscriber);
-}
-
-private unsubscribeAll() {
-  this.subscriberList.forEach((subscriber:any) => {
-    this.eventManager.unsubscribe(subscriber.eventName, subscriber.id);
-  });
-}
+```ts
+eventManager.publish(
+  'mouse:move',
+  { x: 100, y: 200 },
+  { storeHistory: false }
+);
 ```
-<h2>License</h2>
-This package is licensed under the MIT License - see the LICENSE.md file for details.
 
+---
 
-<h2>Author</h2>
+# Subscribing to Events
 
-[**Ajithraj G**][npmsite] and his [Official site][website]
+```ts
+const subscriber = eventManager.subscribe(
+  'user:created',
+  (data) => {
+    console.log(data);
+  }
+);
+```
 
+---
 
-[website]: https://ajithraj-g.web.app
-[npmsite]: https://www.npmjs.com/~ajithraj-g
+# One-Time Subscriptions
 
+Useful for initialization flows or single-use listeners.
+
+```ts
+eventManager.subscribeOnce(
+  'app:initialized',
+  (payload) => {
+    console.log('Initialized:', payload);
+  }
+);
+```
+
+---
+
+# Priority Subscriptions
+
+Higher priority subscribers execute first.
+
+```ts
+eventManager.subscribe(
+  'user:created',
+  analyticsHandler,
+  { priority: 100 }
+);
+
+eventManager.subscribe(
+  'user:created',
+  uiHandler,
+  { priority: 10 }
+);
+```
+
+---
+
+# Wildcard Routing
+
+## Single-Level Wildcard (`*`)
+
+Matches exactly one segment.
+
+```ts
+eventManager.subscribe(
+  'user.*.updated',
+  callback
+);
+```
+
+Matches:
+
+```txt
+user.profile.updated
+user.account.updated
+```
+
+Does NOT match:
+
+```txt
+user.profile.password.updated
+```
+
+---
+
+## Multi-Level Wildcard (`**`)
+
+Matches zero or more segments.
+
+```ts
+eventManager.subscribe(
+  'store.**',
+  callback
+);
+```
+
+Matches:
+
+```txt
+store.open
+store.us.billing
+store.us.checkout.success
+```
+
+---
+
+# Middleware
+
+Middleware runs before subscribers receive events.
+
+Useful for:
+
+- validation
+- logging
+- payload mutation
+- filtering
+
+```ts
+eventManager.use((eventName, payload) => {
+
+  // Drop event
+  if (payload.isSpam) {
+    return false;
+  }
+
+  // Mutate payload
+  return {
+    ...payload,
+    timestamp: Date.now()
+  };
+});
+```
+
+---
+
+# Event Replay
+
+Late subscribers can replay historical events.
+
+```ts
+// Published earlier
+eventManager.publish('config:loaded', {
+  theme: 'dark'
+});
+
+// Subscriber joins later
+eventManager.subscribe(
+  'config:loaded',
+  (config) => {
+    console.log(config.theme);
+  }
+);
+```
+
+---
+
+# Unsubscribing
+
+## Remove Specific Subscriber
+
+```ts
+eventManager.unsubscribe(
+  subscriber.eventName,
+  subscriber.id
+);
+```
+
+## Remove All Subscribers for an Event
+
+```ts
+eventManager.unsubscribeEvent('user:created');
+```
+
+## Clear Entire Event Bus
+
+```ts
+eventManager.unsubscribeAll();
+```
+
+---
+
+# Destroy Event Manager Instance
+
+Useful during testing or application teardown.
+
+```ts
+eventManager.destroy();
+```
+
+---
+
+# Event Naming Best Practices
+
+## Recommended Format
+
+Use hierarchical naming:
+
+```txt
+user:created
+user:auth:login
+store.us.checkout
+```
+
+---
+
+## Rules
+
+- Event names must be strings
+- Event names are case-sensitive
+- Wildcards are only valid in subscriptions
+- Use delimiters like `:` or `.`
+
+---
+
+# Migration Guide (v1.1.1 → Latest)
+
+Most existing code remains compatible.
+
+However, wildcard behavior changed from greedy matching to structural matching.
+
+---
+
+## Old Behavior
+
+```ts
+bus.subscribe('user:*', callback);
+```
+
+Previously matched everything downstream.
+
+---
+
+## New Equivalent
+
+```ts
+bus.subscribe('user:**', callback);
+```
+
+Matches:
+
+```txt
+user:created
+user:auth:login
+user:auth:password:reset
+```
+
+---
+
+## New Precise Matching
+
+```ts
+bus.subscribe('user:*:status', callback);
+```
+
+Matches:
+
+```txt
+user:admin:status
+```
+
+Does NOT match:
+
+```txt
+user:admin:super:status
+```
+
+---
+
+# Performance
+
+Designed for low-overhead event dispatching.
+
+## Highlights
+
+- Zero runtime dependencies
+- Optimized dispatch pipeline
+- Lightweight architecture
+- Minimal memory overhead
+
+---
+
+# Documentation & Playground
+
+Official Documentation & Interactive Playground:
+
+https://deslay-ai.web.app/ga-pubsub
+
+---
+
+# License
+
+MIT License
+
+See `LICENSE.md` for details.
+
+---
+
+# Author
+
+**Ajithraj G**
